@@ -10,8 +10,6 @@ require('dotenv').config()
 app.use(cors());
 app.use(express.json());
 
-console.log(process.env.DB_USER);
-console.log(process.env.DB_PASSWORD);
 
 app.get('/', (req, res) =>{
     res.send('Genius car is running')
@@ -108,6 +106,7 @@ app.get('/orders', async(req, res)=>{
         }
         const cursor = Order.find(query)
         const order = await cursor.toArray();
+        
         res.send({
             success: true,
             message: ('All Orders is Here'),
@@ -137,6 +136,60 @@ app.post('/orders', async (req, res)=>{
                 error: ('Could`t place the order')
             })
         }
+    } catch (error) {
+        
+    }
+})
+
+app.patch('/orders/:id', async (req, res) =>{
+    try {
+        const {id} = req.params;
+        const status = req.body.status;
+        const filter = {_id: new ObjectId(id)};
+        const options = {upsert: true};
+        const updateOrder = {
+            $set:{
+                status:status,
+            }
+        }
+        const result = await Order.updateOne(filter, updateOrder, options)
+        if(result.modifiedCount){
+            res.send({
+                success: true, 
+                message: ('Successfully update your Order'),
+            })
+        }
+        else{
+            res.send({
+                success: false,
+                error: ('Something went wrong please try again')
+            })
+        }
+        
+    } catch (error) {
+        console.log(error.name.bgRed, error.message)
+    }
+})
+
+app.delete('/orders/:id', async(req, res)=>{
+    try {
+        const id = req.params.id;
+        const query = {_id: new ObjectId(id)}
+        const result = await Order.deleteOne(query);
+       
+        if(result.deletedCount){
+            res.send({
+                success:true,
+                message: 'Your order has been successfully deleted',
+            })
+        }
+        else{
+            res.send({
+                success:false,
+                error: ('Order not deleted yet, please try again')
+            })
+        } 
+        
     } catch (error) {
         
     }
