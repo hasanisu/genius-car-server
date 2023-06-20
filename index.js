@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
@@ -15,7 +16,7 @@ app.get('/', (req, res) =>{
     res.send('Genius car is running')
 })
 
-
+// Secret jwt token method 
 
 
 const uri =`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.dkggbgt.mongodb.net/?retryWrites=true&w=majority`;
@@ -27,6 +28,22 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+
+// JWT TOKEN FUNCTION
+function verifyJWT(req, res, next ){
+    const authHeader = req.headers.authorization;
+    if(!authHeader){                                                                /* amra client side e order er modde ekta authorization set koresi r sheita check kore dekhteci ja ase kina */
+       return res.status(401).send({message: 'unauthorized access'})
+    }
+    const token = authHeader.split(' ')[1];                                          /* 38 - 44 eita hosse token varify method */
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded){  
+        if(err){
+           return res.status(401).send({message: 'unauthorized access'})
+        }
+        req.decoded = decoded;
+        next(); /* eita default functtion eita k call na korle kaj hobe na */
+    })
+}
 
 async function run() {
   try {
@@ -44,14 +61,6 @@ run();
 const Service = client.db("geniusCar").collection('services');
 const Order = client.db("geniusCar").collection('orders');
 
-// endpoint
-// app.post('/services', async (req, res) =>{
-//     try {
-        
-//     } catch (error) {
-//         res.send()
-//     }
-// })
 
 app.get('/services', async(req, res) =>{
     try {
@@ -95,8 +104,13 @@ app.get('/services/:id', async(req, res) =>{
 
 // Orders api
 
-app.get('/orders', async(req, res)=>{
-    console.log(req.query.email);
+app.get('/orders', verifyJWT, async(req, res)=>{
+    const decoded = req.decoded;
+
+    if(decoded.email !== req.query.email){
+        res.status(403).send({message: 'unauthorized  access'})
+    }
+    
     try {
         let query ={};
         if(req.query.email){
@@ -119,7 +133,7 @@ app.get('/orders', async(req, res)=>{
 
 
 
-app.post('/orders', async (req, res)=>{
+app.post('/orders', verifyJWT, async (req, res)=>{
     try {
         const body = req.body;
         const order = await Order.insertOne(body)
@@ -141,7 +155,7 @@ app.post('/orders', async (req, res)=>{
     }
 })
 
-app.patch('/orders/:id', async (req, res) =>{
+app.patch('/orders/:id', verifyJWT, async (req, res) =>{
     try {
         const {id} = req.params;
         const status = req.body.status;
@@ -171,7 +185,7 @@ app.patch('/orders/:id', async (req, res) =>{
     }
 })
 
-app.delete('/orders/:id', async(req, res)=>{
+app.delete('/orders/:id', verifyJWT, async(req, res)=>{
     try {
         const id = req.params.id;
         const query = {_id: new ObjectId(id)}
@@ -193,6 +207,14 @@ app.delete('/orders/:id', async(req, res)=>{
     } catch (error) {
         
     }
+})
+
+
+// JWT API 
+app.post('/jwt', (req, res)=>{               /* for login page- customer jokhn login korbe tokhn amra token dibo */
+   const user = req.body;
+   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'})
+   res.send({token})
 })
 
 
