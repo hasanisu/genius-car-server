@@ -64,8 +64,22 @@ const Order = client.db("geniusCar").collection('orders');
 
 app.get('/services', async(req, res) =>{
     try {
-        const query = {};
-        const cursor = Service.find(query);
+        const search = req.query.search
+        console.log(search)
+        let query = {
+            $text:{
+                $search:search
+            }
+        };
+        // if(search.length){
+        //     query = {
+        //         $text: {
+        //             $search: search
+        //         }
+        //     }
+        // }
+        const order = req.query.order === 'asc' ? 1 : -1;
+        const cursor = Service.find(query).sort({price: order});
         const service = await cursor.toArray();
         res.send({
             success: true,
